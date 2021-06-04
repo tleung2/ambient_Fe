@@ -10,27 +10,44 @@ library(viridis)
 
 ########################################################################
    ######################   CHECK NORMALITY   ######################
-ggplot(ambient_Fe, aes(x = TDFe)) +
+ggplot(chase_Fe, aes(x = Fe)) +
   geom_histogram()
 
-ambient_Fe$logFe <-log(ambient_Fe$TDFe)
+   ### log Fe values to improve distribution
+chase_Fe$logFe <-log(chase_Fe$Fe)
 
-ggplot(ambient_Fe, aes(x = logFe)) +
+   ### Check distribution
+   ### Still not normal distribution but better than earlier
+ggplot(chase_Fe, aes(x = logFe)) +
   geom_histogram()
-
-
 
 
 #######################################################################
-   #################   TIDY DATA FOR nMDS   #####################
+   ######################   BOXPLOTS: Fe   ######################
 
-   ### Pivot dataframe wider (each lake has 3 Fe measurements across)
-   ### id_cols --> include relevant data you want that is not pivoted
-lakes_fe2 <- lakes_fe[-c(1)] %>%
-  pivot_wider(names_from = Summer_Period, values_from = TDFe, 
-              id_cols = c(Site_Name, Body))
+   ### Subset 2018 data since this is most consistent
+   ### and n is largest for this year
+chase.2018<-subset(chase_Fe, Year == 2018)
+chase.2019<-subset(chase_Fe, Year == 2019 & Fe > 0)
+chase_Fe2<-chase_Fe %>%
+  subset(!Site %in% c("Honey Creek Resort", "Union Grove", 
+                    "Crandall's Beach") & Fe > 0)
 
-lakes_fe3<-na.omit(lakes_fe2)
+   ### make boxplots to look at the variance
+   ### plot by order of variance
+
+ggplot(data = chase_Fe2, 
+       aes(y = Fe, x = reorder(Site, Fe, FUN = median, .desc = FALSE, na.rm = FALSE))) +
+  geom_boxplot(aes(fill = Waterbody)) +
+  scale_fill_brewer(palette = "BrBG") +
+  #labs(y = expression(paste('Total Dissolved Fe (', mu, 'mol/L)'))) +
+  theme(panel.background = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.text.y = element_text(size = 12, color = "black"),
+        axis.text.x = element_text(size = 12, color = "black", angle = 90, hjust = 1),
+        axis.title.x = element_blank(),
+        legend.position = "top")
+
 #######################################################################
    #######################    RUN nMDS    ########################
 set.seed(123)
