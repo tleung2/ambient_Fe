@@ -1,13 +1,16 @@
    ### LOAD PACKAGES
 library(tidyverse)
-library(vegan)
+library(GGally)
 library(viridis)
+library(RColorBrewer)
 
 
    ### LOAD DATA chase_lakes_final and ambient_Fe
    ### Data named as ambient_Fe = ambient_Fe
    ### Data names as chase_Fe = chase_lakes_final
 
+   ### Convert columns to numeric
+chase_Fe[,c(11:33)] <-as.numeric(chase_Fe[,c(11:33)])
 ########################################################################
    ######################   CHECK NORMALITY   ######################
 ggplot(chase_Fe, aes(x = Fe)) +
@@ -31,31 +34,56 @@ chase.2018<-subset(chase_Fe, Year == 2018)
 chase.2019<-subset(chase_Fe, Year == 2019 & Fe > 0)
 chase_Fe2<-chase_Fe %>%
   subset(!Site %in% c("Honey Creek Resort", "Union Grove", 
-                    "Crandall's Beach") & Fe > 0)
+                    "Crandall's Beach", "Lake Wapello") & Fe > 0)
 
    ### make boxplots to look at the variance
    ### plot by order of variance
 
 ggplot(data = chase_Fe2, 
-       aes(y = Fe, x = reorder(Site, Fe, FUN = median, .desc = FALSE, na.rm = FALSE))) +
+       aes(y = Fe, x = reorder(Site2, Fe, FUN = median, .desc = FALSE, na.rm = FALSE))) +
   geom_boxplot(aes(fill = Waterbody)) +
   scale_fill_brewer(palette = "BrBG") +
-  #labs(y = expression(paste('Total Dissolved Fe (', mu, 'mol/L)'))) +
+  labs(y = expression(paste('Total Dissolved Fe (', mu, 'mol/L)'))) +
   theme(panel.background = element_blank(),
         axis.line = element_line(color = "black"),
-        axis.text.y = element_text(size = 12, color = "black"),
-        axis.text.x = element_text(size = 12, color = "black", angle = 90, hjust = 1),
+        axis.text.y = element_text(size = 16, color = "black"),
+        axis.text.x = element_text(size = 16, color = "black", angle = 90, hjust = 1, vjust = 0.5),
         axis.title.x = element_blank(),
-        legend.position = "top")
+        axis.title.y = element_text(size = 16),
+        legend.position = "top",
+        legend.key = element_blank(),
+        legend.text = element_text(size = 16),
+        legend.title = element_blank())
 
 #######################################################################
-   #######################    RUN nMDS    ########################
-set.seed(123)
-   ### nmds of pivoted data
-   ### cannot color by summer period
-mds.res<-metaMDS(lakes_fe3[,c(3:5)], k = 2, distance = "bray", 
-                  maxit = 999)
-meta.res
+   #################    CORRELATION ANALYSIS     #################
+set.seed(123)  ## ensures repetition
+
+   ### 1) Group lakes together based on previous boxplot
+   ### Lakes with similar Fe distribution need to be together
+
+group1<- chase_Fe2 %>% 
+  select(-c(1,3,6,8:12,14:34)) %>%
+  subset(Site2 %in% c("Lake Darling","Prairie Rose",
+                                       "Lake Mananwa", "Lake Keomah",
+                                       "Lake of Three Fires")) %>%
+  pivot_wider(names_from = "Site2", values_from = "Fe")
+
+group2<- chase_Fe2 %>%
+  select(-c(1,3,7,8:12,14:34)) %>%
+  subset(Site %in% c("North Twin","Viking Lake", "Big Creek",
+                                       "Clear Lake","Rock Creek","Brushy Creek",
+                                       "Black Hawk","Green Valley")) %>%
+  pivot_wider(names_from = "Site", values_from = "Fe")
+
+group3<- chase_Fe2 %>%
+  select(-c(1,3,6,8:12,14:34)) %>%
+  subset(Site2 %in% c("Beeds Lake", "Lower Pine Lake")) %>%
+  pivot_wider(names_from = "Site2", values_from = "Fe")
+
+   
+   ### 
+
    ### nmds of original data
    ### color by summer period
    ### need to pivot back to long format
