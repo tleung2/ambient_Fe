@@ -3,11 +3,13 @@ library(tidyverse)
 library(GGally)
 library(viridis)
 library(RColorBrewer)
+library(Hmisc)
 
 
    ### LOAD DATA chase_lakes_final and ambient_Fe
    ### Data named as ambient_Fe = ambient_Fe
    ### Data names as chase_Fe = chase_lakes_final
+   ### Data names as all.2018 = all_lakes_2018_Fe
 
    ### Convert columns to numeric
 chase_Fe[,c(11:33)] <-as.numeric(chase_Fe[,c(11:33)])
@@ -36,12 +38,14 @@ chase_Fe2<-chase_Fe %>%
   subset(!Site %in% c("Honey Creek Resort", "Union Grove", 
                     "Crandall's Beach", "Lake Wapello") & Fe > 0)
 
-   ### make boxplots to look at the variance
-   ### plot by order of variance
 
-ggplot(data = chase_Fe2, 
-       aes(y = Fe, x = reorder(Site2, Fe, FUN = median, .desc = FALSE, na.rm = FALSE))) +
-  geom_boxplot(aes(fill = Waterbody)) +
+   ### make boxplots to look at the variance
+   ### plot by order of median using reorder() and FUN = median
+
+ggplot(data = all.2018, 
+       aes(y = avg_Fe, x = reorder(Site2, avg_Fe, FUN = mean, .desc = FALSE, na.rm = TRUE))) +
+  geom_boxplot(aes(fill = Waterbody2)) +
+  stat_summary(fun.y=mean, geom="point", shape=4, size=2) +
   scale_fill_brewer(palette = "BrBG") +
   labs(y = expression(paste('Total Dissolved Fe (', mu, 'mol/L)'))) +
   theme(panel.background = element_blank(),
@@ -59,9 +63,11 @@ ggplot(data = chase_Fe2,
    #################    CORRELATION ANALYSIS     #################
 set.seed(123)  ## ensures repetition
 
-   ### 1) Group lakes together based on previous boxplot
+   ##################  1) Group lakes together   ####################
+   ### based on previous boxplot and pivot_wider so each lake is a column
    ### Lakes with similar Fe distribution need to be together
-
+   
+   ### group 1
 group1<- chase_Fe2 %>% 
   select(-c(1,3,6,8:12,14:34)) %>%
   subset(Site2 %in% c("Lake Darling","Prairie Rose",
@@ -69,6 +75,7 @@ group1<- chase_Fe2 %>%
                                        "Lake of Three Fires")) %>%
   pivot_wider(names_from = "Site2", values_from = "Fe")
 
+   ### group 2
 group2<- chase_Fe2 %>%
   select(-c(1,3,7,8:12,14:34)) %>%
   subset(Site %in% c("North Twin","Viking Lake", "Big Creek",
@@ -76,34 +83,68 @@ group2<- chase_Fe2 %>%
                                        "Black Hawk","Green Valley")) %>%
   pivot_wider(names_from = "Site", values_from = "Fe")
 
+   ### group 3
 group3<- chase_Fe2 %>%
   select(-c(1,3,6,8:12,14:34)) %>%
   subset(Site2 %in% c("Beeds Lake", "Lower Pine Lake")) %>%
   pivot_wider(names_from = "Site2", values_from = "Fe")
 
    
-   ### 
+   ################ 2) ggpairs: correlation analysis  #################
+   ### Run correlation for each group
+ggpairs(group1[,c(4:7)])
+ggpairs(group2[c(1:15),c(4:7)]) + 
+  labs(y = expression(paste('Total Dissolved Fe (', mu, 'mol/L)')),
+       x = expression(paste('Total Dissolved Fe (', mu, 'mol/L)'))) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
 
-   ### nmds of original data
-   ### color by summer period
-   ### need to pivot back to long format
-lakes_fe4<-pivot_longer(lakes_fe3, 3:5, names_to = "summer_period", 
-                        values_to = "TDFe")
-   ### pivot wider to place each site as column                       
-lakes_fe5<-pivot_wider(lakes_fe4, names_from = c(Site_Name), values_from = TDFe,
-                       id_cols = c(summer_period))
-   ### run nmds 
-mds.res2<-metaMDS(lakes_fe5[,c(2:80)], k = 2, distance = "bray", 
-                 maxit = 999)
-mds.res2
+group2 %>%
+  subset(Year == 2019) %>%
+  select(-c(1:3,6,7)) %>%
+  ggcorr(method = c("pairwise", "spearman")) +
+  #ggpairs(group2[c(1:15),c(4:7)]) + 
+  labs(y = expression(paste('Total Dissolved Fe (', mu, 'mol/L)')),
+       x = expression(paste('Total Dissolved Fe (', mu, 'mol/L)'))) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
 
+
+pivot.2018 %>%
+  select(-c(1:2)) %>%
+  ggpairs(method = c("pairwise", "spearman")) +
+  #ggpairs(group2[c(1:15),c(4:7)]) + 
+  labs(y = expression(paste('Total Dissolved Fe (', mu, 'mol/L)')),
+       x = expression(paste('Total Dissolved Fe (', mu, 'mol/L)'))) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
 #######################################################################
-   ####################   PREPARE FOR GGPLOT   ####################
+   ##################    CORRELATION ANALYSIS    ##################
 
-   ### 1) Extract nMDS output into a dataframe 
-   ### Use the score () to extraxt site scores and convert to data frame
-mds.scores<-as.data.frame(scores(meta.res))
-mds.scores2<-as.data.frame(scores(mds.res2))
+   ### Pivot wider 2018 Fe data so each lake is a column
+pivot.2018<-all.2018 %>%
+  na.omit() %>%
+  select(c(4,5,7,13)) %>%
+  pivot_wider(names_from = "Site2", values_from = "avg_Fe")
+
+   ### Spearman correlation matrix
+res<-rcorr(as.matrix(pivot.2018[,c(3:33)], type = "spearman"))
+res
+#######################################################################
+   ##################   VISUALIZING CORRELATION   #################
+
+   ### Be careful of where to put pvalue and r value
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+corrplot(res$r, method = "color", 
+         type = "upper", 
+         order = "hclust", 
+         tl.col = "black",
+         col = brewer.pal(n = 11, name = "RdYlBu"),
+         p.mat = res$P, sig.level = 0.05, 
+         insig = "blank")
 
    ### 2) create solumn of site names from row names of meta.scores
 mds.scores$site<-rownames(mds.res)
