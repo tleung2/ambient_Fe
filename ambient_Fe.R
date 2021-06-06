@@ -23,15 +23,21 @@ invisible(lapply(lapply(load_pkg, rlang::quo_name),
 chase_Fe[,c(11:33)] <-as.numeric(chase_Fe[,c(11:33)])
 ########################################################################
    ######################   CHECK NORMALITY   ######################
-ggplot(chase_Fe, aes(x = Fe)) +
+ggplot(all.2018, aes(x = avg_Fe)) +
   geom_histogram()
+   ### Shapiro test
+   ### if P > 0.05, then normally distributed
+shapiro.test(all.2018$avg_Fe)  ### failed normal distribution test
 
    ### log Fe values to improve distribution
-chase_Fe$logFe <-log(chase_Fe$Fe)
+all.2018$log_avgFe <-log(all.2018$avg_Fe)
+
+   ### Use Shapiro to check distribution of logged values
+shapiro.test(all.2018$log_avgFe)
 
    ### Check distribution
    ### Still not normal distribution but better than earlier
-ggplot(chase_Fe, aes(x = logFe)) +
+ggplot(all.2018, aes(x = log_avgFe)) +
   geom_histogram()
 
 
@@ -51,9 +57,9 @@ chase_Fe2<-chase_Fe %>%
    ### plot by order of median using reorder() and FUN = median
 
 ggplot(data = all.2018, 
-       aes(y = avg_Fe, x = reorder(Site2, avg_Fe, FUN = mean, .desc = FALSE, na.rm = TRUE))) +
+       aes(y = avg_Fe, x = reorder(Site2, avg_Fe, FUN = median, .desc = FALSE, na.rm = TRUE))) +
   geom_boxplot(aes(fill = Waterbody2)) +
-  stat_summary(fun.y=mean, geom="point", shape=4, size=2) +
+  #stat_summary(fun.y=mean, geom="point", shape=4, size=2) +
   scale_fill_brewer(palette = "BrBG") +
   labs(y = expression(paste('Total Dissolved Fe (', mu, 'mol/L)'))) +
   theme(panel.background = element_blank(),
@@ -139,7 +145,7 @@ pivot.2018<-all.2018 %>%
   pivot_wider(names_from = "Site2", values_from = "avg_Fe")
 
    ### Spearman correlation matrix
-res<-rcorr(as.matrix(pivot.2018[,c(3:33)], type = "spearman"))
+res<-rcorr(as.matrix(pivot.2018[,c(3:32)], type = "spearman"))
 res
 #######################################################################
    ##################   VISUALIZING CORRELATION   #################
@@ -180,7 +186,7 @@ res.table<-flattenCorrMatrix(res$r, res$P)
    ### save inro R data
 save(res.table, file = "spearman_corr_all_lakes.rda")
    ### save as .csv file
-write.csv(res.table, file = "spearman_all_lakes.csv")
+write.csv(res$P, file = "spearman_p_all_lakes.csv")
 
 ######################################################################
    ################   TIDYING CORRELATION RESULTS   ##############
@@ -215,5 +221,11 @@ p1
 
 ##########################################################################
    ####################   SIGNIFICANCE TESTING   ####################
+
+
+   ### Mann-Whiteney test
+   ### Is the range in Fe different between lakes?
+   ### wilcox.test(dependent~independent)
+wilcox.test(all.2018$avg_Fe, all.2018$Site2, exact = FALSE)
 
 kruskal.test(lakes_fe$TDFe, lakes_fe$landform, correct=FALSE, na.rm = TRUE)
