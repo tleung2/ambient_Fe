@@ -4,6 +4,14 @@ library(GGally)
 library(viridis)
 library(RColorBrewer)
 library(Hmisc)
+library(corrplot)
+
+   ### Type in packages needed
+load_pkg <- rlang::quos(tidyverse, GGally, RColorBrewer, Hmisc, corrplot)
+   ### Load these packages
+invisible(lapply(lapply(load_pkg, rlang::quo_name),
+                 library,
+                 character.only = TRUE))
 
 
    ### LOAD DATA chase_lakes_final and ambient_Fe
@@ -90,7 +98,7 @@ group3<- chase_Fe2 %>%
   pivot_wider(names_from = "Site2", values_from = "Fe")
 
    
-   ################ 2) ggpairs: correlation analysis  #################
+   #################   2) ggpairs: correlation analysis  #################
    ### Run correlation for each group
 ggpairs(group1[,c(4:7)])
 ggpairs(group2[c(1:15),c(4:7)]) + 
@@ -146,26 +154,37 @@ corrplot(res$r, method = "color",
          p.mat = res$P, sig.level = 0.05, 
          insig = "blank")
 
-   ### 2) create solumn of site names from row names of meta.scores
-mds.scores$site<-rownames(mds.res)
-mds.scores2$site<-rownames(mds.res2)
 
-   ### 3) add details to mds.scores dataframe
-mds.scores$body<-lakes_fe3$Body
-mds.scores$site_name<-lakes_fe3$Site_Name
-mds.scores$start_fe<-lakes_fe3$Start
-mds.scores$middle_fe<-lakes_fe3$Middle
-mds.scores$end_fe<-lakes_fe3$End
+######################################################################
+   ###############   SAVE CORRELATION ANALYSIS   #################
 
-mds.scores2$summer_period<-lakes_fe5$summer_period
+   ############   1) Flatten Function   ###############
+   ### Create function to flatten correlation output
+   ### cormat : matrix of the correlation coefficients
+   ### pmat : matrix of the correlation p-values
+   ### Make sure Hmisc package is turned on
+flattenCorrMatrix <- function(cormat, pmat) {
+  ut <- upper.tri(cormat)
+  data.frame(
+    row = rownames(cormat)[row(cormat)[ut]],
+    column = rownames(cormat)[col(cormat)[ut]],
+    cor  =(cormat)[ut],
+    p = pmat[ut]
+  )
+}
    
-   ### Save mds scores dataframe
-save(mds.scores, file = "mds_scores_lakes_fe.rda")
+   ############   2) Flatten correlation matrix   #################
+   ### assign matrix as a dataframe
+res.table<-flattenCorrMatrix(res$r, res$P)
+   ############   3) Save correlation matrix   #################
+   ### save inro R data
+save(res.table, file = "spearman_corr_all_lakes.rda")
+   ### save as .csv file
+write.csv(res.table, file = "spearman_all_lakes.csv")
 
-   ### 4) Extract Species scores into dataframe 
-   ### Use score () to extract species score from mds output 
-   ### and convert to data frame
-species.score<-as.data.frame(scores(mds.data, "species"))
+######################################################################
+   ################   TIDYING CORRELATION RESULTS   ##############
+res.table2<-subset(res.table, p < 5e-2)
 
    ### 5) create columns of species from the species score dataframe
 species.score$species<-rownames(species.score)
