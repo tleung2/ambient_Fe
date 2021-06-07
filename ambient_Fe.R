@@ -73,6 +73,12 @@ ggplot(data = all.2018,
         legend.text = element_text(size = 16),
         legend.title = element_blank())
 
+
+#######################################################################
+   #################    DESCRIPTIVE STATISTICS   #################
+summary(ambient_Fe$TDFe)
+summary(all.2018$avg_Fe)
+
 #######################################################################
    #################    CORRELATION ANALYSIS     #################
 set.seed(123)  ## ensures repetition
@@ -192,11 +198,6 @@ write.csv(res$P, file = "spearman_p_all_lakes.csv")
    ################   TIDYING CORRELATION RESULTS   ##############
 res.table2<-subset(res.table, p < 5e-2)
 
-   ### 5) create columns of species from the species score dataframe
-species.score$species<-rownames(species.score)
-   ### check species dataframe
-head(species.score)
-
 
 ########################################################################
    ################   PLOT nMDS WITH GGPLOT   #####################
@@ -222,10 +223,19 @@ p1
 ##########################################################################
    ####################   SIGNIFICANCE TESTING   ####################
 
-
-   ### Mann-Whiteney test
+   ### Kruskal Willis test
    ### Is the range in Fe different between lakes?
-   ### wilcox.test(dependent~independent)
-wilcox.test(all.2018$avg_Fe, all.2018$Site2, exact = FALSE)
+   ### kruskal.test(dependent~independent)
+kruskal.test(all.2018$avg_Fe~all.2018$Site2)
+
+   ### For pairwise comparison, number of observations must be the same
+   ### Removing week 1 and 2 and other NA sites
+all.2018b <-all.2018 %>%
+  select(c(4,5,7,13)) %>%
+  subset(!(Week %in% c(1,2)) & !(Site2 %in% "George Wyth")) %>%
+  na.omit()
+
+test<-pivot_wider(all.2018b, values_from = avg_Fe, names_from = Site2)
+pairwise.wilcox.test(all.2018b$avg_Fe, all.2018b$Site2, paired = TRUE)
 
 kruskal.test(lakes_fe$TDFe, lakes_fe$landform, correct=FALSE, na.rm = TRUE)
