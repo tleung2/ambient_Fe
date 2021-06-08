@@ -55,20 +55,23 @@ chase_Fe2<-chase_Fe %>%
 
    ### make boxplots to look at the variance
    ### plot by order of median using reorder() and FUN = median
-
-ggplot(data = all.2018, 
-       aes(y = avg_Fe, x = reorder(Site2, avg_Fe, FUN = median, .desc = FALSE, na.rm = TRUE))) +
-  geom_boxplot(aes(fill = Waterbody2)) +
+ambient_Fe %>%
+  na.omit() %>%
+ggplot(aes(y = TDFe, x = reorder(Waterbody2, TDFe, FUN = median, .desc = FALSE, na.rm = TRUE))) +
+  geom_boxplot(aes(fill = Waterbody2), na.rm = TRUE) +
   #stat_summary(fun.y=mean, geom="point", shape=4, size=2) +
   scale_fill_brewer(palette = "BrBG") +
   labs(y = expression(paste('Total Dissolved Fe (', mu, 'mol/L)'))) +
+  coord_flip() +
+  facet_wrap(.~Waterbody2, ncol = 1, scale = "free") +
   theme(panel.background = element_blank(),
         axis.line = element_line(color = "black"),
-        axis.text.y = element_text(size = 16, color = "black"),
+        axis.text.y = element_blank(),
         axis.text.x = element_text(size = 16, color = "black", angle = 90, hjust = 1, vjust = 0.5),
-        axis.title.x = element_blank(),
-        axis.title.y = element_text(size = 16),
-        legend.position = "top",
+        axis.title.x = element_text(size = 16, color = "black"),
+        axis.title.y = element_blank(),
+        strip.text = element_text(size = 16),
+        legend.position = "N/A",
         legend.key = element_blank(),
         legend.text = element_text(size = 16),
         legend.title = element_blank())
