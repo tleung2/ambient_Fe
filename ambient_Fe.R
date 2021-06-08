@@ -5,9 +5,12 @@ library(viridis)
 library(RColorBrewer)
 library(Hmisc)
 library(corrplot)
+library(ggpmisc)
+library(lme4)
 
    ### Type in packages needed
-load_pkg <- rlang::quos(tidyverse, GGally, RColorBrewer, Hmisc, corrplot)
+load_pkg <- rlang::quos(tidyverse, GGally, RColorBrewer, Hmisc, 
+                        corrplot, ggpubr, ggpmisc,lme4)
    ### Load these packages
 invisible(lapply(lapply(load_pkg, rlang::quo_name),
                  library,
@@ -23,11 +26,11 @@ invisible(lapply(lapply(load_pkg, rlang::quo_name),
 chase_Fe[,c(11:33)] <-as.numeric(chase_Fe[,c(11:33)])
 ########################################################################
    ######################   CHECK NORMALITY   ######################
-ggplot(all.2018, aes(x = avg_Fe)) +
+ggplot(all.2018, aes(x = Fe)) +
   geom_histogram()
    ### Shapiro test
    ### if P > 0.05, then normally distributed
-shapiro.test(all.2018$avg_Fe)  ### failed normal distribution test
+shapiro.test(all.2018$Fe)  ### failed normal distribution test
 
    ### log Fe values to improve distribution
 all.2018$log_avgFe <-log(all.2018$avg_Fe)
@@ -142,7 +145,7 @@ group2 %>%
         panel.grid.minor = element_blank())
 
 
-pivot.2018 %>%
+pivot.2018b %>%
   select(-c(1:2)) %>%
   ggpairs(method = c("pairwise", "spearman")) +
   #ggpairs(group2[c(1:15),c(4:7)]) + 
@@ -252,3 +255,31 @@ pairwise.wilcox.test(all.2018b$avg_Fe, all.2018b$Site2, paired = TRUE)
    ### Significant difference if pvalue < 0.05
 wilcox.test(ambient_avgFe$mean~ ambient_avgFe$Waterbody2)
 kruskal.test(lakes_fe$TDFe, lakes_fe$landform, correct=FALSE, na.rm = TRUE)
+
+#######################################################################
+   ###################    LINEAR REGRESSION   #####################
+mob1<-lm(all.2018$avg_Fe~all.2018$Week)
+summary(mob1)
+
+xyplot(all.2018$avg_Fe ~ all.2018$Week, groups=Site2, data=all.2018, type='l')
+fits <- lmList(all.2018$avg_Fe ~ all.2018$Week | Site2, data=all.2018)
+fits
+   ### Plot Linear Regression
+   ### Smooth moethod = loess means locally weighted regression
+all.2018 %>%
+  subset(!Site %in% c("Denison", "McIntosh Woods", "North Twin Lake West")) %>%
+ggplot(aes(x=Week, y=avg_Fe)) + 
+  geom_point(colour="black", size = 2) + 
+  stat_smooth(method = 'loess', aes(color = 'linear'), se = TRUE, formula = y ~ x) + ## Turns on confidence intervals
+  stat_poly_eq(aes(label = ..eq.label..), formula = y ~ x, parse = TRUE, size = 3) +                                 ## Turns on equation
+  stat_cor(label.x.npc = "center", label.y.npc = "top", size = 3) + ## Turns on r value
+  labs(x = 'Week',
+       y = expression(paste('Total Dissolved Fe (', mu, 'mol/L)'))) +
+  #scale_y_continuous(position = "right") +  ## places y scale on right
+  facet_wrap(~Site2, scales = "free", ncol = 5) +
+  theme_classic() +
+  theme(axis.text.y.left = element_text(size=11, color = "black"), 
+        axis.text.x.bottom = element_text(size=11, color = "black"),
+        axis.title.x = element_text(size=11),
+        axis.title.y = element_text(size=11),
+        strip.text = element_text(size = 11))
