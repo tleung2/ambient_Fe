@@ -55,13 +55,13 @@ chase_Fe2<-chase_Fe %>%
 
    ### make boxplots to look at the variance
    ### plot by order of median using reorder() and FUN = median
-ambient_Fe %>%
+ambient_avgFe %>%
   na.omit() %>%
-ggplot(aes(y = TDFe, x = reorder(Waterbody2, TDFe, FUN = median, .desc = FALSE, na.rm = TRUE))) +
+ggplot(aes(y = mean, x = reorder(Waterbody2, mean, FUN = median, .desc = FALSE, na.rm = TRUE))) +
   geom_boxplot(aes(fill = Waterbody2), na.rm = TRUE) +
   #stat_summary(fun.y=mean, geom="point", shape=4, size=2) +
   scale_fill_brewer(palette = "BrBG") +
-  labs(y = expression(paste('Total Dissolved Fe (', mu, 'mol/L)'))) +
+  labs(y = expression(paste('Average Total Dissolved Fe (', mu, 'mol/L)'))) +
   coord_flip() +
   facet_wrap(.~Waterbody2, ncol = 1, scale = "free") +
   theme(panel.background = element_blank(),
@@ -81,6 +81,13 @@ ggplot(aes(y = TDFe, x = reorder(Waterbody2, TDFe, FUN = median, .desc = FALSE, 
    #################    DESCRIPTIVE STATISTICS   #################
 summary(ambient_Fe$TDFe)
 summary(all.2018$avg_Fe)
+ambient_avgFe <- ambient_Fe %>%
+  select(c(4,5,7,8)) %>%
+  group_by(Site_Name) %>%
+  #mutate(mean = mean (TDFe))%>%
+  #ungroup()
+  summarise(mean = mean(TDFe))
+write.csv(ambient_avgFe, "ambient_avgFe.csv")
 
 #######################################################################
    #################    CORRELATION ANALYSIS     #################
@@ -230,6 +237,7 @@ p1
    ### Is the range in Fe different between lakes?
    ### kruskal.test(dependent~independent)
 kruskal.test(all.2018$avg_Fe~all.2018$Site2)
+kruskal.test(ambient_Fe$TDFe~ambient_Fe$Waterbody2)
 
    ### For pairwise comparison, number of observations must be the same
    ### Removing week 1 and 2 and other NA sites
@@ -240,5 +248,7 @@ all.2018b <-all.2018 %>%
 
 test<-pivot_wider(all.2018b, values_from = avg_Fe, names_from = Site2)
 pairwise.wilcox.test(all.2018b$avg_Fe, all.2018b$Site2, paired = TRUE)
-
+   ### Compare median between 2 groups
+   ### Significant difference if pvalue < 0.05
+wilcox.test(ambient_avgFe$mean~ ambient_avgFe$Waterbody2)
 kruskal.test(lakes_fe$TDFe, lakes_fe$landform, correct=FALSE, na.rm = TRUE)
