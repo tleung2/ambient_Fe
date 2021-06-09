@@ -82,15 +82,26 @@ ggplot(aes(y = mean, x = reorder(Waterbody2, mean, FUN = median, .desc = FALSE, 
 
 #######################################################################
    #################    DESCRIPTIVE STATISTICS   #################
-summary(ambient_Fe$TDFe)
+ambient_avgFe %>%
+  subset(Waterbody2 == "Artificial Lakes") %>%
+  summarise(quant = quantile(TDFe, probs = c(0.25,0.5,0.75)),
+            mean = mean(TDFe),
+            min = min(TDFe))
+             
 summary(all.2018$avg_Fe)
-ambient_avgFe <- ambient_Fe %>%
-  select(c(4,5,7,8)) %>%
-  group_by(Site_Name) %>%
-  #mutate(mean = mean (TDFe))%>%
+avg.fe.2018<-all.2018 %>%
+  na.omit() %>%
+#ambient_avgFe <- ambient_Fe %>%
+  select(c(4,5,7,8,13)) %>%
+  group_by(Site2) %>%
+  #mutate(mean = mean(avg_Fe))#%>%
   #ungroup()
-  summarise(mean = mean(TDFe))
+  summarise(mean = mean(avg_Fe))
 write.csv(ambient_avgFe, "ambient_avgFe.csv")
+
+ambient_avgFe %>%
+  subset(Waterbody2 == "Artificial Lakes") %>%
+  count()
 
 #######################################################################
    #################    CORRELATION ANALYSIS     #################
@@ -241,6 +252,7 @@ p1
    ### kruskal.test(dependent~independent)
 kruskal.test(all.2018$avg_Fe~all.2018$Site2)
 kruskal.test(ambient_Fe$TDFe~ambient_Fe$Waterbody2)
+kruskal.test(ambient_Fe$TDFe~ambient_Fe$Site_Name)
 
    ### For pairwise comparison, number of observations must be the same
    ### Removing week 1 and 2 and other NA sites
@@ -249,8 +261,10 @@ all.2018b <-all.2018 %>%
   subset(!(Week %in% c(1,2)) & !(Site2 %in% "George Wyth")) %>%
   na.omit()
 
-test<-pivot_wider(all.2018b, values_from = avg_Fe, names_from = Site2)
-pairwise.wilcox.test(all.2018b$avg_Fe, all.2018b$Site2, paired = TRUE)
+
+pair.res<-pairwise.wilcox.test(all.2018b$avg_Fe, all.2018b$Site2, paired = TRUE,
+                     p.adjust.method = "BH")
+write.csv(pair.res$p.value, "pairwise_results_2018.csv")
    ### Compare median between 2 groups
    ### Significant difference if pvalue < 0.05
 wilcox.test(ambient_avgFe$mean~ ambient_avgFe$Waterbody2)
@@ -261,13 +275,15 @@ kruskal.test(lakes_fe$TDFe, lakes_fe$landform, correct=FALSE, na.rm = TRUE)
 mob1<-lm(all.2018$avg_Fe~all.2018$Week)
 summary(mob1)
 
-xyplot(all.2018$avg_Fe ~ all.2018$Week, groups=Site2, data=all.2018, type='l')
-fits <- lmList(all.2018$avg_Fe ~ all.2018$Week | Site2, data=all.2018)
-fits
+   ### Linear regression for week 1 to 8
+wk1_8<-all.2018 %>%
+  na.omit() %>%
+  subset(Week >= 1 & Week <=8)
+
    ### Plot Linear Regression
    ### Smooth moethod = loess means locally weighted regression
-all.2018 %>%
-  subset(!Site %in% c("Denison", "McIntosh Woods", "North Twin Lake West")) %>%
+wk1_8 %>%
+  #subset(!Site %in% c("Denison", "McIntosh Woods", "North Twin Lake West")) %>%
 ggplot(aes(x=Week, y=avg_Fe)) + 
   geom_point(colour="black", size = 2) + 
   stat_smooth(method = 'loess', aes(color = 'linear'), se = TRUE, formula = y ~ x) + ## Turns on confidence intervals
@@ -283,3 +299,66 @@ ggplot(aes(x=Week, y=avg_Fe)) +
         axis.title.x = element_text(size=11),
         axis.title.y = element_text(size=11),
         strip.text = element_text(size = 11))
+
+
+   ###########  Plot Linear Regression: Slope vs Volume  #############
+   ### LR of Week vs Fe show decline Fe from Week 1-8
+   ### Pulled slope from this LR 
+   ### Run LR for slope vs lake volume
+   
+chase_slope %>%
+  #subset(!Site %in% c("Denison", "McIntosh Woods", "North Twin Lake West")) %>%
+  ggplot(aes(x=reorder(Site2, slope), y=slope)) + 
+  geom_bar(stat="identity", fill = "steelblue") +
+  geom_text(stat = "identity", label = round(chase_slope$volume,0), nudge_y = -0.1) +
+  #stat_smooth(method = 'loess', aes(color = 'linear'), se = TRUE, formula = y ~ x) + ## Turns on confidence intervals
+  #stat_poly_eq(aes(label = ..eq.label..), formula = y ~ x, parse = TRUE, size = 3) +                                 ## Turns on equation
+  #stat_cor(label.x.npc = "center", label.y.npc = "top", size = 3) + ## Turns on r value
+  labs(y = expression(paste('Change in Fe (', mu, 'g/L) per week'))) +
+  #scale_y_continuous(position = "right") +  ## places y scale on right
+  #facet_wrap(~Site2, scales = "free", ncol = 5) +
+  theme_classic() +
+  theme(axis.text.y = element_text(size=12, color = "black"), 
+        axis.text.x = element_text(size=12, color = "black", 
+                                   angle = 90, vjust = 0.5, hjust = 1),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size=12),
+        strip.text = element_text(size = 12))
+
+
+   ###########  Plot Linear Regression: Fe vs. DOC  #############
+   ### This is for browning....
+
+all.2018 %>%
+  subset(!Site %in% c("Denison", "McIntosh Woods", "North Twin Lake West")) %>%
+  ggplot(aes(x=DOC, y=avg_Fe)) + 
+  geom_point(stat="identity") +
+  #geom_text(stat = "identity", label = round(chase_slope$volume,0), nudge_y = -0.1) +
+  #stat_smooth(method = 'loess', aes(color = 'linear'), se = TRUE, formula = y ~ x) + ## Turns on confidence intervals
+  #stat_poly_eq(aes(label = ..eq.label..), formula = y ~ x, parse = TRUE, size = 3) +                                 ## Turns on equation
+  #stat_cor(label.x.npc = "center", label.y.npc = "top", size = 3) + ## Turns on r value
+  labs(y = expression(paste('Dissolved Fe (', mu, 'g/L) per week')),
+       x = 'Dissolved organic carbon (mg/L)') +
+  #scale_y_continuous(position = "right") +  ## places y scale on right
+  #facet_wrap(~Site2, scales = "free", ncol = 5) +
+  theme_classic() +
+  theme(axis.text.y = element_text(size=12, color = "black"), 
+        axis.text.x = element_text(size=12, color = "black"),
+        axis.title.x = element_text(size = 12),
+        axis.title.y = element_text(size=12),
+        strip.text = element_text(size = 12))
+
+   ############  Linear Regression: Fe slope for sites  ##############
+pivot.slope<-wk1_8 %>%
+  pivot_wider(values_from = avg_Fe, names_from = Site2) %>%
+  select(-c(1:4,6:18)) 
+res.2<-rcorr(as.matrix(pivot.2018[,c(3:32)], type = "spearman"))
+res
+  ggpairs(method = c("pairwise", "spearman")) +
+  #ggpairs(group2[c(1:15),c(4:7)]) + 
+  labs(y = expression(paste('Total Dissolved Fe (', mu, 'mol/L)')),
+       x = expression(paste('Total Dissolved Fe (', mu, 'mol/L)'))) +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank())
+  
