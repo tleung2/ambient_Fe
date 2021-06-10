@@ -171,8 +171,9 @@ pivot.2018b %>%
    ### Pivot wider 2018 Fe data so each lake is a column
 pivot.2018<-all.2018 %>%
   na.omit() %>%
-  select(c(4,5,7,13)) %>%
-  pivot_wider(names_from = "Site2", values_from = "avg_Fe")
+  select(c(4,7,13)) %>%
+  pivot_wider(names_from = "Date", values_from = "avg_Fe") 
+
 
    ### Spearman correlation matrix
 res<-rcorr(as.matrix(pivot.2018[,c(3:32)], type = "spearman"))
@@ -191,6 +192,9 @@ corrplot(res$r, method = "color",
          insig = "blank")
 
 
+   ### hclustering (like phylogenetic tree)
+sing.hclust = hclust(Dmat,method="single")
+myplclust(sing.hclust, labels=colnames(ncidat), lab.col=as.fumeric(colnames(ncidat)), main = "single linkage")
 ######################################################################
    ###############   SAVE CORRELATION ANALYSIS   #################
 
@@ -272,27 +276,45 @@ kruskal.test(lakes_fe$TDFe, lakes_fe$landform, correct=FALSE, na.rm = TRUE)
 
 #######################################################################
    ###################    LINEAR REGRESSION   #####################
-mob1<-lm(all.2018$avg_Fe~all.2018$Week)
+
+mob1<-lm(avg_Fe~pH+Temperature+DO+DOC+Turbidity, data = all.2018)
 summary(mob1)
+
+   ### linear mixed model
+mixed.lmer <- lmer(avg_Fe ~ DOC + (1|Waterbody2), data = all.2018)
+summary(mixed.lmer)
 
    ### Linear regression for week 1 to 8
 wk1_8<-all.2018 %>%
   na.omit() %>%
   subset(Week >= 1 & Week <=8)
 
-   ### Plot Linear Regression
+   ### Plot Linear Regression: Fe over time
    ### Smooth moethod = loess means locally weighted regression
-wk1_8 %>%
-  #subset(!Site %in% c("Denison", "McIntosh Woods", "North Twin Lake West")) %>%
-ggplot(aes(x=Week, y=avg_Fe)) + 
+all.2018$Site2<-factor(all.2018$Site2,
+                       levels = c("Backbone","Beeds Lake","George Wyth",
+                                  "Green Valley","Lower Pine Lake",
+                                  "West Okoboji", "Clear Lake", "Nine Eagles",
+                                  "Lake of Three Fires", "Black Hawk",
+                                  "Red Haw", "Rock Creek","Lake Macbride",
+                                  "Rathburn Lake","Lake Wapello","Lake Ahquabi",
+                                  "Lake Anita","Viking Lake","Lacey Keosauqua",
+                                  "Big Spirit","Lake Manawa","Lake Darling",
+                                  "Lake Keomah","Prairie Rose","Union Grove",
+                                  "Springbrook","North Twin","Brushy Creek",
+                                  "Blue Lake","Big Creek"))
+
+all.2018 %>%
+  subset(!Site %in% c("Denison", "McIntosh Woods", "North Twin Lake West")) %>%
+ggplot(aes(x=Date, y=avg_Fe)) + 
   geom_point(colour="black", size = 2) + 
   stat_smooth(method = 'loess', aes(color = 'linear'), se = TRUE, formula = y ~ x) + ## Turns on confidence intervals
-  stat_poly_eq(aes(label = ..eq.label..), formula = y ~ x, parse = TRUE, size = 3) +                                 ## Turns on equation
-  stat_cor(label.x.npc = "center", label.y.npc = "top", size = 3) + ## Turns on r value
+  #stat_poly_eq(aes(label = ..eq.label..), formula = y ~ x, parse = TRUE, size = 3) +                                 ## Turns on equation
+  #stat_cor(label.x.npc = "center", label.y.npc = "top", size = 3) + ## Turns on r value
   labs(x = 'Week',
        y = expression(paste('Total Dissolved Fe (', mu, 'mol/L)'))) +
   #scale_y_continuous(position = "right") +  ## places y scale on right
-  facet_wrap(~Site2, scales = "free", ncol = 5) +
+  facet_wrap(~Site2, scales = "free_y", ncol = 5) +
   theme_classic() +
   theme(axis.text.y.left = element_text(size=11, color = "black"), 
         axis.text.x.bottom = element_text(size=11, color = "black"),
@@ -300,7 +322,8 @@ ggplot(aes(x=Week, y=avg_Fe)) +
         axis.title.y = element_text(size=11),
         strip.text = element_text(size = 11))
 
-
+clusters2 <- hclust(dist(pivot.2018[, 2:16]), method = "single")
+plot(clusters2)
    ###########  Plot Linear Regression: Slope vs Volume  #############
    ### LR of Week vs Fe show decline Fe from Week 1-8
    ### Pulled slope from this LR 
@@ -348,17 +371,27 @@ all.2018 %>%
         axis.title.y = element_text(size=12),
         strip.text = element_text(size = 12))
 
-   ############  Linear Regression: Fe slope for sites  ##############
-pivot.slope<-wk1_8 %>%
-  pivot_wider(values_from = avg_Fe, names_from = Site2) %>%
-  select(-c(1:4,6:18)) 
-res.2<-rcorr(as.matrix(pivot.2018[,c(3:32)], type = "spearman"))
-res
-  ggpairs(method = c("pairwise", "spearman")) +
-  #ggpairs(group2[c(1:15),c(4:7)]) + 
-  labs(y = expression(paste('Total Dissolved Fe (', mu, 'mol/L)')),
-       x = expression(paste('Total Dissolved Fe (', mu, 'mol/L)'))) +
-  theme_bw() +
-  theme(panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank())
+   ##############   PLOT: Fe Variability West Okoboji   ##############
+
+   ### significance test: Is Fe different between sites?
+kruskal.test(okoboji_sites$Fe, okoboji_sites$Site)
+pairwise.wilcox.test(okoboji_sites$Fe, okoboji_sites$Site, paired = TRUE)
+
+   ### Plot Fe over time & facet by site
+okoboji_sites$Site<-factor(okoboji_sites$Site, levels = c("Triboji_Beach", "Pikes_Point_Beach",
+                          "Gull_Point_Beach", "Emerson_Bay_Beach")) 
+okoboji_sites %>%
+  ggplot(aes(x = Date, y = Fe)) +
+  geom_point(stat = "identity", size = 2) + 
+  geom_path(stat = "identity", linetype = 2) +
+  labs(y = expression(paste('Total Dissolved Fe (', mu, 'mol/L)'))) +
+  facet_wrap(.~Site, ncol = 1) +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size = 13, color = "black"),
+        axis.title.y = element_text(size = 13, color = "black"),
+        axis.title.x = element_blank(),
+        strip.text = element_text(size = 13, color = "black"),
+        axis.line = element_line(color = "black"))
   
