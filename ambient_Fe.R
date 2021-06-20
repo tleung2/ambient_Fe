@@ -80,22 +80,22 @@ ggplot(aes(y = mean, x = reorder(Waterbody2, mean, FUN = median, .desc = FALSE, 
         legend.title = element_blank())
 
    ### ----  2)  Boxplots of DFe from subset 30 lakes  --------
-all.2018 %>%
-  ggplot(aes(x = avg_Fe)) +
+all_2018 %>%
+  ggplot(aes(y = avg_Fe, x = Month)) +
   geom_boxplot(aes(fill = "gray"), na.rm = TRUE) +
   #stat_summary(fun.y=mean, geom="point", shape=4, size=2) +
   scale_fill_brewer(palette = "BrBG") +
-  labs(x = expression(paste('Total Dissolved Fe (', mu, 'mol/L)'))) +
+  labs(y = expression(paste('Total Dissolved Fe (', mu, 'g/L)'))) +
   #labs(x = 'Dissolved organic carbon (mg/L') +
   #coord_flip() +
-  facet_wrap(.~Month, ncol = 1) +
+  #facet_wrap(.~Month, ncol = 1) +
   theme(panel.background = element_blank(),
-        axis.line.x = element_line(color = "black"),
-        axis.text.y = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.text.y = element_text(size = 16, color = "black"),
         axis.ticks.y = element_blank(),
-        axis.text.x = element_text(size = 16, color = "black", hjust = 1, vjust = 0.5),
-        axis.title.x = element_text(size = 16, color = "black"),
-        axis.title.y = element_blank(),
+        axis.text.x = element_text(size = 16, color = "black", hjust = 0.5, vjust = 0.5),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 16, color = "black"),
         strip.text = element_text(size = 16),
         legend.position = "N/A",
         legend.key = element_blank(),
@@ -496,14 +496,16 @@ chase_slope %>%
    ### ---- 2)  Plot Linear Regression: Fe vs. DOC  -----------
    ### This is for browning....
 
-group3 %>%
+#group3 %>%
+all_2018 %>%
+  subset(Site == "Springbrook") %>%
   #subset(!Site %in% c("Denison", "McIntosh Woods", "North Twin Lake West")) %>%
   ggplot(aes(y=DOC, x=Fe)) + 
   geom_point(stat="identity") +
   #geom_text(stat = "identity", label = round(chase_slope$volume,0), nudge_y = -0.1) +
   stat_smooth(method = 'lm', aes(color = 'linear'), se = TRUE, formula = y ~ x) + ## Turns on confidence intervals
   #stat_poly_eq(aes(label = ..eq.label..), formula = y ~ x, parse = TRUE, size = 3) +                                 ## Turns on equation
-  stat_cor(label.x.npc = "center", label.y.npc = "top", size = 4) + ## Turns on r value
+  #stat_cor(label.x.npc = "center", label.y.npc = "top", size = 4) + ## Turns on r value
   labs(x = expression(paste('Dissolved Fe (', mu, 'g/L) per week')),
        y = 'Dissolved organic carbon (mg/L)') +
   #scale_y_continuous(position = "right") +  ## places y scale on right
@@ -540,3 +542,24 @@ okoboji_sites %>%
         strip.text = element_text(size = 13, color = "black"),
         axis.line = element_line(color = "black"))
   
+   ###  3) -----   Plot Linear regression Fe vs time   -------------
+all_2018 %>%
+  subset(Site == "Springbrook") %>%
+  #subset(!Site %in% c("Denison", "McIntosh Woods", "North Twin Lake West")) %>%
+  ggplot(aes(x=Date, y=Fe)) + 
+  geom_point(stat="identity") +
+  #geom_text(stat = "identity", label = round(chase_slope$volume,0), nudge_y = -0.1) +
+  stat_smooth(method = 'loess', aes(color = 'linear'), se = TRUE, formula = y ~ x) + ## Turns on confidence intervals
+  #stat_poly_eq(aes(label = ..eq.label..), formula = y ~ x, parse = TRUE, size = 3) +                                 ## Turns on equation
+  #stat_cor(label.x.npc = "center", label.y.npc = "top", size = 4) + ## Turns on r value
+  labs(y = expression(paste('Total Dissolved Fe (', mu, 'g/L) '))) +
+       #y = 'Dissolved organic carbon (mg/L)') +
+  #scale_y_continuous(position = "right") +  ## places y scale on right
+  facet_wrap(~Site2, scales = "free", ncol = 3) +
+  theme(panel.background = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.text.y = element_text(size=14, color = "black"), 
+        axis.text.x = element_text(size=14, color = "black"),
+        axis.title.x = element_text(size = 14),
+        axis.title.y = element_text(size=14),
+        strip.text = element_text(size = 14))
