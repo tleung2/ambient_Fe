@@ -10,7 +10,7 @@ library(lme4)
 
    ### Type in packages needed
 load_pkg <- rlang::quos(tidyverse, GGally, RColorBrewer, Hmisc, 
-                        corrplot, ggpubr, ggpmisc,lme4)
+                        corrplot, ggpubr, ggpmisc,lme4, vegan)
    ### Load these packages
 invisible(lapply(lapply(load_pkg, rlang::quo_name),
                  library,
@@ -261,7 +261,7 @@ res.table2<-subset(res.table, p < 5e-2)
 
 ########################################################################
    ################   PLOT nMDS WITH GGPLOT   #####################
-## -------------- Plot nMDS of references only  -----------------
+   ## -------------- Plot nMDS of references only  -----------------
 ## hulling only default refs, alpha = transparency w/ 0 being transparent
 p1<-ggplot() +
   geom_point(data = mds.scores, aes(x=NMDS1, y=NMDS2, color = end_fe), size = 5) +
@@ -355,6 +355,7 @@ pivot.2018b<-pivot.2018%>%
 fviz_nbclust(pivot.2018b[,c(2:13)], kmeans, method = "wss")
 
    ### ----   2)  Run k-means cluster analysis   ----------
+set.seed(123)
 clust.res <- kmeans(pivot.2018b[,2:13], 3, nstart = 30)
 print(clust.res)
    
@@ -542,7 +543,7 @@ okoboji_sites %>%
         strip.text = element_text(size = 13, color = "black"),
         axis.line = element_line(color = "black"))
   
-   ###  3) -----   Plot Linear regression Fe vs time   -------------
+   ### ---- 3)  Plot Linear regression Fe vs time   -------------
 all_2018 %>%
   subset(Site == "Springbrook") %>%
   #subset(!Site %in% c("Denison", "McIntosh Woods", "North Twin Lake West")) %>%
@@ -564,6 +565,30 @@ all_2018 %>%
         axis.title.y = element_text(size=14),
         strip.text = element_text(size = 14))
 
+   ### ---- 4)  k-means cluster: Fe trend line graph  -----------
+   ###  Plot line graph Fe over time for each k-means group
+   ###  Color each line by lake
+#group1 %>%
+#group2 %>%
+group3 %>%
+  subset(Site2 == "Lake of Three Fires") %>%
+  ggplot(aes(x=Date, y=avg_Fe)) + 
+  geom_point(stat="identity") +
+  #geom_text(stat = "identity", label = round(chase_slope$volume,0), nudge_y = -0.1) +
+  stat_smooth(method = 'loess', aes(color = 'linear'), se = TRUE, formula = y ~ x) + ## Turns on confidence intervals
+  #stat_poly_eq(aes(label = ..eq.label..), formula = y ~ x, parse = TRUE, size = 3) +                                 ## Turns on equation
+  #stat_cor(label.x.npc = "center", label.y.npc = "top", size = 4) + ## Turns on r value
+  labs(y = expression(paste('Total Dissolved Fe (', mu, 'g/L) '))) +
+  #y = 'Dissolved organic carbon (mg/L)') +
+  #scale_y_continuous(position = "right") +  ## places y scale on right
+  facet_wrap(~Site2, scales = "free", ncol = 3) +
+  theme(panel.background = element_blank(),
+        axis.line = element_line(color = "black"),
+        axis.text.y = element_text(size=28, color = "black"), 
+        axis.text.x = element_text(size=28, color = "black"),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size=28),
+        strip.text = element_text(size = 28))
 
 #########################################################################
    ##############   AREA PLOt: Community composition   ##############
