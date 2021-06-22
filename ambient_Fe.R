@@ -563,3 +563,42 @@ all_2018 %>%
         axis.title.x = element_text(size = 14),
         axis.title.y = element_text(size=14),
         strip.text = element_text(size = 14))
+
+
+#########################################################################
+   ##############   AREA PLOt: Community composition   ##############
+   ### Use BM_data_final
+fire <- BM_data[grepl("2020", BM_data[["unique_ID"]]) | grepl("Three", BM_data[["Site"]]), ]
+
+### Pivot df to make column for chla value and taxa
+colnames(fire)[9] <- "PE_chla"  ## rename PE column to take uo "-" sign
+fire.pivot <- fire %>%
+  select(c(1:9)) %>%  ## grabs samples for week 6 to 15
+  pivot_longer(6:9, names_to = "taxa",  
+              values_to = "chla")
+  ### Assign taxa levels
+fire.pivot$taxa=factor(fire.pivot$taxa, levels = c("green_chla","brown_chla",
+                                                   "PE_chla", "cyano_chla"))
+                         #"'Green' group","'Brown' group","'Red' group","'Blue' group")
+
+   ### Plot stacked area plot
+ggplot(fire.pivot, aes(x=date, y=chla, fill=taxa)) + 
+  geom_area() +
+  scale_fill_manual(values = c("#66CC33","#CC9966","#CC3399","#00CCCC"),
+                    labels = c("'Green' group", "'Brown' group",
+                               "'Red' group", "'Blue' group"),
+                    name = "Phytoplankton group") +
+  labs(y = expression(paste('PhytoPAM Chl a (', mu, 'g/L)')),
+    #y = expression(paste('Relative PhytoPAM Chl a (%)')),
+    x = "Date") +
+  facet_wrap(.~Site) +
+  theme(panel.background = element_blank(),
+        axis.title = element_text(size = 16),
+        axis.text.x = element_text(size = 16, color = "black"),
+        axis.text.y = element_text(size = 16, color = "black"),
+        axis.line = element_line(color = "black"),
+        strip.text = element_text(size = 16),
+        legend.position = "right",
+        legend.title = element_text(size = 16),
+        legend.text = element_text(size = 16))
+
