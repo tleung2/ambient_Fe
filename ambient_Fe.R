@@ -352,16 +352,19 @@ pivot.2018b<-pivot.2018%>%
   select(c(1,4,6:16)) %>%
   na.omit()
    ### Find k group
-fviz_nbclust(pivot.2018b[,c(2:13)], kmeans, method = "wss")
+fviz_nbclust(pivot.2018b[,c(2:13)], kmeans, method = "wss") +
+  theme(axis.text = element_text(size = 28),
+        axis.title = element_text(size = 28),
+        plot.title = element_text(size = 28))
 
    ### ----   2)  Run k-means cluster analysis   ----------
 set.seed(123)
-clust.res <- kmeans(pivot.2018b[,2:13], 3, nstart = 30)
+clust.res2 <- kmeans(pivot.2018b[,2:13], 7, nstart = 30)
 print(clust.res)
    
    ### ----  3)  Plot kmeans results  ----------
    ### Plot using default function
-fviz_cluster(clust.res, data = pivot.2018b[,c(2:13)]) +
+fviz_cluster(clust.res2, data = pivot.2018b[,c(2:13)]) +
   scale_fill_brewer(palette = "Set2") +
   theme(panel.background = element_blank(),
         panel.grid.major = element_blank(),
@@ -379,6 +382,7 @@ state_scores<-as.data.frame(scores(trythis))
 state_scores$cluster <- clust.res$cluster
 state_scores$state <- pivot.2018b$Site2
 head(state_scores)
+state_scores$cluster=factor(state_scores$cluster, levels = c("1","2","3"))
 
 chull(state_scores %>% filter(cluster ==1) %>% select(PC1, PC2))
 
@@ -388,11 +392,15 @@ grp.3 <- state_scores[state_scores$cluster == 3, ][chull(state_scores %>% filter
 all_hulls <- rbind(grp.1,grp.2,grp.3)
 head(all_hulls)
 
+
+   ### Remove subset() if graphing all 3 groups
+#state_scores %>%
+  #subset(cluster =="1") %>%
 ggplot(data = state_scores) + 
-  geom_point(aes(x = PC1, y = PC2, color = as.factor(cluster)),size = 3) +
-  geom_text(aes(x = PC1, y = PC2, color = as.factor(cluster), 
+  geom_point(data = subset(state_scores, cluster == 3), aes(x = PC1, y = PC2, color = as.factor(cluster)),size = 3) +
+  geom_text(data = subset(state_scores, cluster == 3), aes(x = PC1, y = PC2, color = as.factor(cluster), 
                 label = state),size = 5,  hjust = -0.1, vjust = 0.5)  +
-  geom_polygon(data = all_hulls, 
+  geom_polygon(data = grp.3, 
                aes(x = PC1, y = PC2, fill = as.factor(cluster),  #as.factor(cluster)
                    colour =  NA), alpha = 0.25) + 
                    #colour =  as.factor(cluster)), alpha = 0.25) + 
@@ -571,7 +579,7 @@ all_2018 %>%
 #group1 %>%
 #group2 %>%
 group3 %>%
-  subset(Site2 == "Lake of Three Fires") %>%
+  subset(Site2 == "Lake Macbride") %>%
   ggplot(aes(x=Date, y=avg_Fe)) + 
   geom_point(stat="identity") +
   #geom_text(stat = "identity", label = round(chase_slope$volume,0), nudge_y = -0.1) +
