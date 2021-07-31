@@ -206,7 +206,11 @@ pivot.2018<-all.2018 %>%
   select(c(5,7,13)) %>%
   pivot_wider(names_from = "Week", values_from = "avg_Fe") 
 
-
+   ### Pivot wider 2018 logFe data so each lake is a column
+pivot.log2018<-all.2018 %>%
+  na.omit() %>%
+  select(c(5,7,20)) %>%
+  pivot_wider(names_from = "Week", values_from = "log_avgFe")
    ### Spearman correlation matrix
 res<-rcorr(as.matrix(pivot.2018[,c(3:32)], type = "spearman"))
 res
@@ -348,7 +352,7 @@ plot(clusters2)
 
    ### -----  1)  optimal number of k clusters "elbow method"  -------
    ### First omit an Null values
-pivot.2018b<-pivot.2018%>%
+pivot.log2018b<-pivot.log2018%>%
   select(c(1,4,6:16)) %>%
   na.omit()
    ### Find k group
@@ -361,10 +365,13 @@ fviz_nbclust(pivot.2018b[,c(2:13)], kmeans, method = "wss") +
 set.seed(123)
 clust.res2 <- kmeans(pivot.2018b[,2:13], 7, nstart = 30)
 print(clust.res)
+
+clust.res3 <- kmeans(pivot.log2018b[,2:13], 3, nstart = 30)
+print(clust.res3)
    
    ### ----  3)  Plot kmeans results  ----------
    ### Plot using default function
-fviz_cluster(clust.res2, data = pivot.2018b[,c(2:13)]) +
+fviz_cluster(clust.res3, data = pivot.log2018b[,c(2:13)]) +
   scale_fill_brewer(palette = "Set2") +
   theme(panel.background = element_blank(),
         panel.grid.major = element_blank(),
@@ -377,10 +384,10 @@ fviz_cluster(clust.res2, data = pivot.2018b[,c(2:13)]) +
 
 
    ### Plotting kmeans with ggplot
-trythis<-stats::prcomp(pivot.2018b[,c(2:13)], scale = FALSE, center = FALSE)
+trythis<-stats::prcomp(pivot.log2018b[,c(2:13)], scale = FALSE, center = FALSE)
 state_scores<-as.data.frame(scores(trythis))
-state_scores$cluster <- clust.res$cluster
-state_scores$state <- pivot.2018b$Site2
+state_scores$cluster <- clust.res3$cluster
+state_scores$state <- pivot.log2018b$Site2
 head(state_scores)
 state_scores$cluster=factor(state_scores$cluster, levels = c("1","2","3"))
 
@@ -397,13 +404,19 @@ head(all_hulls)
 #state_scores %>%
   #subset(cluster =="1") %>%
 ggplot(data = state_scores) + 
-  geom_point(data = subset(state_scores, cluster == 3), aes(x = PC1, y = PC2, color = as.factor(cluster)),size = 3) +
-  geom_text(data = subset(state_scores, cluster == 3), aes(x = PC1, y = PC2, color = as.factor(cluster), 
-                label = state),size = 5,  hjust = -0.1, vjust = 0.5)  +
-  geom_polygon(data = grp.3, 
+  #geom_point(data = subset(state_scores, cluster == 1), aes(x = PC1, y = PC2, color = as.factor(cluster)),size = 3) +
+  geom_point(data = state_scores, aes(x = PC1, y = PC2, color = as.factor(cluster)),size = 3) +
+  #geom_text(data = subset(state_scores, cluster == 1), aes(x = PC1, y = PC2, color = as.factor(cluster), 
+                #label = state),size = 5,  hjust = -0.1, vjust = 0.5)  +
+  geom_text(data = state_scores, aes(x = PC1, y = PC2, color = as.factor(cluster), 
+                                     label = state),size = 5,  hjust = -0.1, vjust = 0.5)  +
+  #geom_polygon(data = grp.1, 
+               #aes(x = PC1, y = PC2, fill = as.factor(cluster),  #as.factor(cluster)
+                   #colour =  NA), alpha = 0.25) + 
+                   #colour =  as.factor(cluster)), alpha = 0.25) + 
+  geom_polygon(data = all_hulls, 
                aes(x = PC1, y = PC2, fill = as.factor(cluster),  #as.factor(cluster)
                    colour =  NA), alpha = 0.25) + 
-                   #colour =  as.factor(cluster)), alpha = 0.25) + 
   scale_fill_brewer(palette = "Set2") +
   scale_color_brewer(palette = "Set2") +
   theme(panel.background = element_blank(),
@@ -443,6 +456,21 @@ group2<-subset(all.2018, Site2 %in% c("Green Valley", "George Wyth",
 group3<-subset(all.2018, Site2 %in% c("Lake Macbride","Lake Anita",
                                       "Lake Wapello", "Rathburn Lake",
                                       "Red Haw","Lake Keomah","Lake Darling",
+                                      "Lake of Three Fires",
+                                      "Viking Lake"))
+
+log.group1<-subset(all.2018, Site2 %in% c("Backbone", "Beeds Lake",
+                                      "Lower Pine Lake", "West Okoboji"))
+log.group2<-subset(all.2018, Site2 %in% c("Green Valley", "George Wyth",
+                                      "Brushy Creek","Big Creek", "Big Spirit",
+                                      "Black Hawk","North Twin","Springbrook",
+                                      "Blue Lake","Lake Manawa", "Union Grove",
+                                      "Prairie Rose","Nine Eagles","Lake Ahquabi",
+                                      "Rock Creek","Lacey Keosauqua","Clear Lake",
+                                      "Lake Keomah"))
+log.group3<-subset(all.2018, Site2 %in% c("Lake Macbride","Lake Anita",
+                                      "Lake Wapello", "Rathburn Lake",
+                                      "Red Haw","Lake Darling",
                                       "Lake of Three Fires",
                                       "Viking Lake"))
 
@@ -578,25 +606,29 @@ all_2018 %>%
    ###  Color each line by lake
 #group1 %>%
 #group2 %>%
-group3 %>%
-  subset(Site2 == "Lake Macbride") %>%
-  ggplot(aes(x=Date, y=avg_Fe)) + 
+log.group3 %>%
+  #subset(Site2 == "Lake Macbride") %>%
+  ggplot(aes(x=Date, y=log_avgFe)) + 
   geom_point(stat="identity") +
   #geom_text(stat = "identity", label = round(chase_slope$volume,0), nudge_y = -0.1) +
   stat_smooth(method = 'loess', aes(color = 'linear'), se = TRUE, formula = y ~ x) + ## Turns on confidence intervals
   #stat_poly_eq(aes(label = ..eq.label..), formula = y ~ x, parse = TRUE, size = 3) +                                 ## Turns on equation
   #stat_cor(label.x.npc = "center", label.y.npc = "top", size = 4) + ## Turns on r value
-  labs(y = expression(paste('Total Dissolved Fe (', mu, 'g/L) '))) +
-  #y = 'Dissolved organic carbon (mg/L)') +
+  #labs(y = expression(paste('Total Dissolved Fe (', mu, 'g/L) '))) +
+  labs(y = 'Log Dissolved Fe') +
   #scale_y_continuous(position = "right") +  ## places y scale on right
-  facet_wrap(~Site2, scales = "free", ncol = 3) +
+  facet_wrap(~Site2, scales = "free", ncol = 4) +
   theme(panel.background = element_blank(),
         axis.line = element_line(color = "black"),
-        axis.text.y = element_text(size=28, color = "black"), 
-        axis.text.x = element_text(size=28, color = "black"),
+        axis.text.y = element_text(size=14, color = "black"), 
+        axis.text.x = element_text(size=14, color = "black"),
         axis.title.x = element_blank(),
-        axis.title.y = element_text(size=28),
-        strip.text = element_text(size = 28))
+        axis.title.y = element_text(size=14),
+        strip.text = element_text(size = 14),
+        legend.text = element_blank(),
+        legend.title = element_blank(),
+        legend.key = element_blank(),
+        legend.position = "right")
 
 #########################################################################
    ##############   AREA PLOt: Community composition   ##############
