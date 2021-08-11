@@ -1,16 +1,17 @@
-   ### LOAD PACKAGES
+   ### LOAD PACKAGES ------
 library(tidyverse)
 library(GGally)
-library(viridis)
 library(RColorBrewer)
 library(Hmisc)
 library(corrplot)
 library(ggpmisc)
 library(lme4)
+library(factoextra)
 
    ### Type in packages needed
 load_pkg <- rlang::quos(tidyverse, GGally, RColorBrewer, Hmisc, 
-                        corrplot, ggpubr, ggpmisc,lme4, vegan)
+                        corrplot, ggpubr, ggpmisc,lme4, vegan,
+                        factoextra)
    ### Load these packages
 invisible(lapply(lapply(load_pkg, rlang::quo_name),
                  library,
@@ -316,6 +317,7 @@ kruskal.test(lakes_fe$TDFe, lakes_fe$landform, correct=FALSE, na.rm = TRUE)
 
    ### Plot Linear Regression: Fe over time
    ### Smooth moethod = loess means locally weighted regression
+
 all.2018$Site2<-factor(all.2018$Site2,
                        levels = c("Backbone","Beeds Lake","George Wyth",
                                   "Green Valley","Lower Pine Lake",
@@ -356,22 +358,27 @@ pivot.log2018b<-pivot.log2018%>%
   select(c(1,4,6:16)) %>%
   na.omit()
    ### Find k group
-fviz_nbclust(pivot.2018b[,c(2:13)], kmeans, method = "wss") +
+   ### Methods: silhouette, gap_stat, wss
+fviz_nbclust(pivot.log2018b[,c(2:13)], kmeans, method = c("silhouette")) +
   theme(axis.text = element_text(size = 28),
         axis.title = element_text(size = 28),
         plot.title = element_text(size = 28))
 
    ### ----   2)  Run k-means cluster analysis   ----------
 set.seed(123)
-clust.res2 <- kmeans(pivot.2018b[,2:13], 7, nstart = 30)
+   ### cluster into 7 groups
+clust.res2 <- kmeans(pivot.log2018b[,2:13], 7, nstart = 30)
 print(clust.res)
-
+   ### Cluster in 3 groups
 clust.res3 <- kmeans(pivot.log2018b[,2:13], 3, nstart = 30)
+print(clust.res3)
+  ### Cluster in 4 groups
+clust.res4 <- kmeans(pivot.log2018b[,2:13], 4, nstart = 30)
 print(clust.res3)
    
    ### ----  3)  Plot kmeans results  ----------
    ### Plot using default function
-fviz_cluster(clust.res3, data = pivot.log2018b[,c(2:13)]) +
+fviz_cluster(clust.res4, data = pivot.log2018b[,c(2:13)]) +
   scale_fill_brewer(palette = "Set2") +
   theme(panel.background = element_blank(),
         panel.grid.major = element_blank(),
@@ -383,13 +390,15 @@ fviz_cluster(clust.res3, data = pivot.log2018b[,c(2:13)]) +
         axis.line = element_line(color = "black"))
 
 
-   ### Plotting kmeans with ggplot
+   ### 3a) Plotting kmeans with ggplot (k = 3) -------
 trythis<-stats::prcomp(pivot.log2018b[,c(2:13)], scale = FALSE, center = FALSE)
 state_scores<-as.data.frame(scores(trythis))
 state_scores$cluster <- clust.res3$cluster
 state_scores$state <- pivot.log2018b$Site2
 head(state_scores)
 state_scores$cluster=factor(state_scores$cluster, levels = c("1","2","3"))
+state_scores$cluster=factor(state_scores$cluster, levels = c("1","2","3",
+                                                             "4","5","6","7"))
 
 chull(state_scores %>% filter(cluster ==1) %>% select(PC1, PC2))
 
@@ -430,12 +439,119 @@ ggplot(data = state_scores) +
         legend.position = "none")
 
 
+   ### 3b) Plotting kmeans with ggplot (k = 4) -------
+trythis<-stats::prcomp(pivot.log2018b[,c(2:13)], scale = FALSE, center = FALSE)
+state_scores<-as.data.frame(scores(trythis))
+state_scores$cluster <- clust.res4$cluster
+state_scores$state <- pivot.log2018b$Site2
+head(state_scores)
+
+state_scores$cluster=factor(state_scores$cluster, levels = c("1","2","3",
+                                                             "4"))
+
+grp.1 <- state_scores[state_scores$cluster == 1, ][chull(state_scores %>% filter(cluster ==1) %>% select(PC1, PC2) ), ]  # hull values for cluster 1
+grp.2 <- state_scores[state_scores$cluster == 2, ][chull(state_scores %>% filter(cluster ==2) %>% select(PC1, PC2) ), ]  # hull values for cluster 2
+grp.3 <- state_scores[state_scores$cluster == 3, ][chull(state_scores %>% filter(cluster ==3) %>% select(PC1, PC2) ), ]  # hull values for cluster 3
+grp.4 <- state_scores[state_scores$cluster == 4, ][chull(state_scores %>% filter(cluster ==4) %>% select(PC1, PC2) ), ]  # hull values for cluster 4
+all_hulls <- rbind(grp.1,grp.2,grp.3,grp.4)
+head(all_hulls)
+
+
+### Remove subset() if graphing all 3 groups
+#state_scores %>%
+#subset(cluster =="1") %>%
+ggplot(data = state_scores) + 
+  #geom_point(data = subset(state_scores, cluster == 1), aes(x = PC1, y = PC2, color = as.factor(cluster)),size = 3) +
+  geom_point(data = state_scores, aes(x = PC1, y = PC2, color = as.factor(cluster)),size = 3) +
+  #geom_text(data = subset(state_scores, cluster == 1), aes(x = PC1, y = PC2, color = as.factor(cluster), 
+  #label = state),size = 5,  hjust = -0.1, vjust = 0.5)  +
+  geom_text(data = state_scores, aes(x = PC1, y = PC2, color = as.factor(cluster), 
+                                     label = state),size = 5,  hjust = -0.1, vjust = 0.5)  +
+  #geom_polygon(data = grp.1, 
+  #aes(x = PC1, y = PC2, fill = as.factor(cluster),  #as.factor(cluster)
+  #colour =  NA), alpha = 0.25) + 
+  #colour =  as.factor(cluster)), alpha = 0.25) + 
+  geom_polygon(data = all_hulls, 
+               aes(x = PC1, y = PC2, fill = as.factor(cluster),  #as.factor(cluster)
+                   colour =  NA), alpha = 0.25) + 
+  scale_fill_brewer(palette = "Set2") +
+  scale_color_brewer(palette = "Set2") +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size = 12, color = "black"),
+        axis.title.y = element_text(size = 12, color = "black"),
+        axis.title.x = element_text(size = 12, color = "black"),
+        strip.text = element_text(size = 12, color = "black"),
+        axis.line = element_line(color = "black"),
+        legend.position = "none")
+   ### 3b) Plotting kmeans with ggplot (k = 7) -------
+trythis<-stats::prcomp(pivot.log2018b[,c(2:13)], scale = FALSE, center = FALSE)
+state_scores<-as.data.frame(scores(trythis))
+state_scores$cluster <- clust.res2$cluster
+state_scores$state <- pivot.log2018b$Site2
+head(state_scores)
+state_scores$cluster=factor(state_scores$cluster, levels = c("1","2","3",
+                                                             "4","5","6","7"))
+
+chull(state_scores %>% filter(cluster ==1) %>% select(PC1, PC2))
+
+grp.1 <- state_scores[state_scores$cluster == 1, ][chull(state_scores %>% filter(cluster ==1) %>% select(PC1, PC2) ), ]  # hull values for cluster 1
+grp.2 <- state_scores[state_scores$cluster == 2, ][chull(state_scores %>% filter(cluster ==2) %>% select(PC1, PC2) ), ]  # hull values for cluster 2
+grp.3 <- state_scores[state_scores$cluster == 3, ][chull(state_scores %>% filter(cluster ==3) %>% select(PC1, PC2) ), ]  # hull values for cluster 3
+grp.4 <- state_scores[state_scores$cluster == 4, ][chull(state_scores %>% filter(cluster ==4) %>% select(PC1, PC2) ), ]  # hull values for cluster 4
+grp.5 <- state_scores[state_scores$cluster == 5, ][chull(state_scores %>% filter(cluster ==5) %>% select(PC1, PC2) ), ]  # hull values for cluster 5
+grp.6 <- state_scores[state_scores$cluster == 6, ][chull(state_scores %>% filter(cluster ==6) %>% select(PC1, PC2) ), ]  # hull values for cluster 6
+grp.7 <- state_scores[state_scores$cluster == 7, ][chull(state_scores %>% filter(cluster ==7) %>% select(PC1, PC2) ), ]  # hull values for cluster 7
+all_hulls <- rbind(grp.1,grp.2,grp.3,grp.4,grp.5,grp.6,grp.7)
+head(all_hulls)
+
+
+   ### Remove subset() if graphing all 3 groups
+   #state_scores %>%
+   #subset(cluster =="1") %>%
+ggplot(data = state_scores) + 
+  #geom_point(data = subset(state_scores, cluster == 1), aes(x = PC1, y = PC2, color = as.factor(cluster)),size = 3) +
+  geom_point(data = state_scores, aes(x = PC1, y = PC2, color = as.factor(cluster)),size = 3) +
+  #geom_text(data = subset(state_scores, cluster == 1), aes(x = PC1, y = PC2, color = as.factor(cluster), 
+  #label = state),size = 5,  hjust = -0.1, vjust = 0.5)  +
+  geom_text(data = state_scores, aes(x = PC1, y = PC2, color = as.factor(cluster), 
+                                     label = state),size = 5,  hjust = -0.1, vjust = 0.5)  +
+  #geom_polygon(data = grp.1, 
+  #aes(x = PC1, y = PC2, fill = as.factor(cluster),  #as.factor(cluster)
+  #colour =  NA), alpha = 0.25) + 
+  #colour =  as.factor(cluster)), alpha = 0.25) + 
+  geom_polygon(data = all_hulls, 
+               aes(x = PC1, y = PC2, fill = as.factor(cluster),  #as.factor(cluster)
+                   colour =  NA), alpha = 0.3) + 
+  scale_fill_brewer(palette = "Set2") +
+  scale_color_brewer(palette = "Set2") +
+  theme(panel.background = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size = 12, color = "black"),
+        axis.title.y = element_text(size = 12, color = "black"),
+        axis.title.x = element_text(size = 12, color = "black"),
+        strip.text = element_text(size = 12, color = "black"),
+        axis.line = element_line(color = "black"),
+        legend.position = "none")
+
+
+
    ### ---- 4)  Re-cluster k-means output by group  ----------
-pivot.group2<-group2 %>%
+   ### Re-run k-means for middle group
+clus.group2<-subset(all.2018, Site2 %in% c("Green Valley", "George Wyth",
+                                          "Brushy Creek","Big Creek", "Big Spirit",
+                                          "Black Hawk","North Twin","Springbrook",
+                                          "Blue Lake","Lake Manawa", "Union Grove",
+                                          "Prairie Rose","Nine Eagles","Lake Ahquabi",
+                                          "Rock Creek","Lacey Keosauqua","Clear Lake",
+                                          "Lake Keomah"))
+pivot.group2<-clus.group2 %>%
   na.omit() %>%
-  select(c(5,7,13)) %>%
-  pivot_wider(names_from = "Week", values_from = "avg_Fe") 
-fviz_nbclust(pivot.group2[,c(4,6:16)], kmeans, method = "wss")
+  select(c(5,7,12)) %>%
+  pivot_wider(names_from = "Week", values_from = "Fe") 
+fviz_nbclust(pivot.group2[,c(4,6:16)], kmeans, method = "gap_stat",nboot = 50)
 
 clust.res2 <- kmeans(pivot.group2[,c(4,6:16)], 3, nstart = 30)
 print(clust.res2)
@@ -444,6 +560,7 @@ fviz_cluster(clust.res2, data = pivot.group2[,c(4,6:16)])
    ###################    LINEAR MIXED MODEL   ###################
 
    ### ---- 1) Create groups based on k-means results ------
+   ### ---- 1a) Grouping based on k-means = 3 -----
 group1<-subset(all.2018, Site2 %in% c("Backbone", "Beeds Lake",
                                       "Lower Pine Lake", "West Okoboji",
                                       "Clear Lake"))
@@ -473,6 +590,9 @@ log.group3<-subset(all.2018, Site2 %in% c("Lake Macbride","Lake Anita",
                                       "Red Haw","Lake Darling",
                                       "Lake of Three Fires",
                                       "Viking Lake"))
+
+  ### ---- 1b) Grouping based on k-means = 7 -------
+
 
    ### ---- 2) Run Linear Mixed Model Analysis --------
 mob1<-lm(avg_Fe~pH+Temperature+DO+DOC+Turbidity, data = group1)
