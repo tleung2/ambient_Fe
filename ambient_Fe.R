@@ -575,23 +575,39 @@ group3<-subset(all.2018, Site2 %in% c("Lake Macbride","Lake Anita",
                                       "Red Haw","Lake Keomah","Lake Darling",
                                       "Lake of Three Fires",
                                       "Viking Lake"))
+    ### Groupings based on log Fe
 
 log.group1<-subset(all.2018, Site2 %in% c("Backbone", "Beeds Lake",
-                                      "Lower Pine Lake", "West Okoboji"))
+                                          "Lower Pine Lake", "West Okoboji"))
 log.group2<-subset(all.2018, Site2 %in% c("Green Valley", "George Wyth",
-                                      "Brushy Creek","Big Creek", "Big Spirit",
-                                      "Black Hawk","North Twin","Springbrook",
-                                      "Blue Lake","Lake Manawa", "Union Grove",
-                                      "Prairie Rose","Nine Eagles","Lake Ahquabi",
-                                      "Rock Creek","Lacey Keosauqua","Clear Lake",
-                                      "Lake Keomah"))
+                                          "Brushy Creek","Big Creek", "Big Spirit",
+                                          "Black Hawk","North Twin","Springbrook",
+                                          "Blue Lake","Lake Manawa", "Union Grove",
+                                          "Prairie Rose","Nine Eagles","Lake Ahquabi",
+                                          "Rock Creek","Lacey Keosauqua","Clear Lake",
+                                          "Lake Keomah"))
 log.group3<-subset(all.2018, Site2 %in% c("Lake Macbride","Lake Anita",
-                                      "Lake Wapello", "Rathburn Lake",
-                                      "Red Haw","Lake Darling",
-                                      "Lake of Three Fires",
-                                      "Viking Lake"))
-
-  ### ---- 1b) Grouping based on k-means = 7 -------
+                                          "Lake Wapello", "Rathburn Lake",
+                                          "Red Haw","Lake Darling",
+                                          "Lake of Three Fires",
+                                          "Viking Lake"))
+   ### ---- 1b) Grouping based on k-means = 4
+log.group1<-subset(all.2018, Site2 %in% c("Backbone", "Beeds Lake",
+                                          "Lower Pine Lake", "West Okoboji"))
+log.group2<-subset(all.2018, Site2 %in% c("Green Valley", "George Wyth",
+                                          "Brushy Creek", "Big Spirit",
+                                          "Black Hawk","North Twin","Springbrook",
+                                          "Blue Lake","Lake Manawa", "Union Grove",
+                                          "Prairie Rose","Nine Eagles",
+                                          "Rock Creek","Clear Lake"))
+log.group3<-subset(all.2018, Site2 %in% c("Big Creek", "Lake of Three Fires",
+                                          "Lake Ahquabi", "Lake Darling",
+                                          "Lacey Keosauqua","Red Haw",
+                                          "Lake Keomah"))
+log.group4<-subset(all.2018, Site2 %in% c("Lake Macbride","Lake Anita",
+                                          "Lake Wapello", "Rathburn Lake",
+                                          "Viking Lake"))
+  ### ---- 1c) Grouping based on k-means = 7 -------
 
 
    ### ---- 2) Run Linear Mixed Model Analysis --------
@@ -654,8 +670,9 @@ chase_slope %>%
    ### This is for browning....
 
 #group3 %>%
-all_2018 %>%
-  subset(Site == "Springbrook") %>%
+log.group2 %>%
+#all_2018 %>%
+  #subset(Site == "Springbrook") %>%
   #subset(!Site %in% c("Denison", "McIntosh Woods", "North Twin Lake West")) %>%
   ggplot(aes(y=DOC, x=Fe)) + 
   geom_point(stat="identity") +
@@ -726,7 +743,7 @@ all_2018 %>%
    ###  Color each line by lake
 #group1 %>%
 #group2 %>%
-log.group3 %>%
+log.group4 %>%
   #subset(Site2 == "Lake Macbride") %>%
   ggplot(aes(x=Date, y=log_avgFe)) + 
   geom_point(stat="identity") +
